@@ -5,7 +5,7 @@ Implementation of Neural Spline Flows.
 See: https://arxiv.org/abs/1906.04032
 """
 
-#from glasflow.nflows.transforms.coupling import PiecewiseBernsteinCouplingTransform
+# from glasflow.nflows.transforms.coupling import PiecewiseBernsteinCouplingTransform
 from glasflow.nflows.transforms.coupling import PiecewiseCouplingTransform
 
 import numpy as np
@@ -14,6 +14,7 @@ import torch.nn.functional as F
 from .coupling import CouplingFlow
 
 from ..transforms.bernstein import bernstein_transform
+
 
 class PiecewiseBernsteinCouplingTransform(PiecewiseCouplingTransform):
     def __init__(
@@ -24,18 +25,17 @@ class PiecewiseBernsteinCouplingTransform(PiecewiseCouplingTransform):
         tails=None,
         tail_bound=1.0,
         apply_unconditional_transform=False,
-        log = False
+        log=False,
     ):
 
-        self.bernstein_degree = bernstein_degree 
+        self.bernstein_degree = bernstein_degree
         self.tails = tails
         self.tail_bound = tail_bound
         self.log = log
 
-
         if apply_unconditional_transform:
             raise NotImplementedError()
-        
+
         else:
             unconditional_transform = None
 
@@ -60,16 +60,17 @@ class PiecewiseBernsteinCouplingTransform(PiecewiseCouplingTransform):
                 "Inputs to the softmax are not scaled down: initialization might be bad."
             )
 
-        
         if self.tails is None:
-             bijector_fn = bernstein_transform
+            bijector_fn = bernstein_transform
         else:
             raise NotImplementedError()
 
         return bijector_fn(
             inputs=inputs,
             unconstrained_alphas=unconstrained_alphas,
-            inverse=inverse, log=self.log)
+            inverse=inverse,
+            log=self.log,
+        )
 
 
 class CouplingBPF(CouplingFlow):
@@ -87,9 +88,9 @@ class CouplingBPF(CouplingFlow):
     n_conditional_inputs: int
         Number of conditionals inputs
     n_neurons : int
-        Number of neurons per residual block in each transform 
+        Number of neurons per residual block in each transform
     n_blocks_per_transform : int
-        Number of residual blocks per transform 
+        Number of residual blocks per transform
     batch_norm_within_blocks : bool
         Enable batch normalisation within each residual block
     batch_norm_between_transforms : bool
@@ -102,7 +103,7 @@ class CouplingBPF(CouplingFlow):
     linear_transform : str, {'permutation', 'lu', 'svd', None}
         Not implemented. Linear transform to apply before each coupling transform.
     distribution : :obj:`nflows.distribution.Distribution`
-        Distribution object to use for that latent space. Default is multivariate uniform. 
+        Distribution object to use for that latent space. Default is multivariate uniform.
     mask : Union[torch.Tensor, list, numpy.ndarray]
         Mask or array of masks to use to construct the flow. If not specified,
         an alternating binary mask will be used.
@@ -131,14 +132,14 @@ class CouplingBPF(CouplingFlow):
         dropout_probability=0.0,
         linear_transform=None,
         distribution="uniform",
-        mask = None,
+        mask=None,
         bernstein_degree=10,
-        log = False,
+        log=False,
         tail_type=None,
         tail_bound=1.0,
         **kwargs,
     ):
-        
+
         transform_class = PiecewiseBernsteinCouplingTransform
 
         if distribution == "uniform":
@@ -170,11 +171,11 @@ class CouplingBPF(CouplingFlow):
             distribution=distribution,
             mask=mask,
             bernstein_degree=bernstein_degree,
-            log = log,
+            log=log,
             tails=tail_type,
             tail_bound=tail_bound,
             **kwargs,
         )
 
 
-#todo: initialise to identity transform..
+# todo: initialise to identity transform..
