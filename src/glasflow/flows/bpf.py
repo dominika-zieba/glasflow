@@ -25,6 +25,7 @@ class PiecewiseBernsteinCouplingTransform(PiecewiseCouplingTransform):
         tails=None,
         tail_bound=1.0,
         apply_unconditional_transform=False,
+        base_distribution = 'uniform',
         log=False,
     ):
 
@@ -32,6 +33,7 @@ class PiecewiseBernsteinCouplingTransform(PiecewiseCouplingTransform):
         self.tails = tails
         self.tail_bound = tail_bound
         self.log = log
+        self.base_distribution = base_distribution
 
         if apply_unconditional_transform:
             raise NotImplementedError()
@@ -46,7 +48,7 @@ class PiecewiseBernsteinCouplingTransform(PiecewiseCouplingTransform):
         )
 
     def _transform_dim_multiplier(self):
-        return self.bernstein_degree - 1
+        return self.bernstein_degree
 
     def _piecewise_cdf(self, inputs, transform_params, inverse=False):
         unconstrained_alphas = transform_params
@@ -69,6 +71,7 @@ class PiecewiseBernsteinCouplingTransform(PiecewiseCouplingTransform):
             inputs=inputs,
             unconstrained_alphas=unconstrained_alphas,
             inverse=inverse,
+            base_distribution = self.base_distribution,
             log=self.log,
         )
 
@@ -94,7 +97,7 @@ class CouplingBPF(CouplingFlow):
     batch_norm_within_blocks : bool
         Enable batch normalisation within each residual block
     batch_norm_between_transforms : bool
-        Enable batch norm between transforms
+        Enable batch norm between transforms. False for uniform latent space. 
     activation : function
         Activation function to use. Defaults to ReLU
     dropout_probability : float
@@ -103,7 +106,7 @@ class CouplingBPF(CouplingFlow):
     linear_transform : str, {'permutation', 'lu', 'svd', None}
         Not implemented. Linear transform to apply before each coupling transform.
     distribution : :obj:`nflows.distribution.Distribution`
-        Distribution object to use for that latent space. Default is multivariate uniform.
+        Distribution object to use for that latent space. Default is multivariate uniform. Others not implemented yet.
     mask : Union[torch.Tensor, list, numpy.ndarray]
         Mask or array of masks to use to construct the flow. If not specified,
         an alternating binary mask will be used.
@@ -131,7 +134,7 @@ class CouplingBPF(CouplingFlow):
         activation=F.relu,
         dropout_probability=0.0,
         linear_transform=None,
-        distribution="uniform",
+        distribution=None,
         mask=None,
         bernstein_degree=10,
         log=False,
@@ -144,17 +147,17 @@ class CouplingBPF(CouplingFlow):
 
         if distribution == "uniform":
             from ..distributions import MultivariateUniform
-
             tail_bound = 1.0
             tail_type = None
-            distribution = MultivariateUniform(
+            distribution_object = MultivariateUniform(
                 low=torch.Tensor(n_inputs * [0.0]),
                 high=torch.Tensor(n_inputs * [1.0]),
             )
             batch_norm_between_transforms = False
 
         else:
-            raise NotImplementedError()
+            distribution_object = distribution #this is later interpreted as a gaussian
+        #    raise NotImplementedError()
 
         super().__init__(
             transform_class,
@@ -168,10 +171,11 @@ class CouplingBPF(CouplingFlow):
             activation=activation,
             dropout_probability=dropout_probability,
             linear_transform=linear_transform,
-            distribution=distribution,
+            distribution=distribution_object,
             mask=mask,
             bernstein_degree=bernstein_degree,
             log=log,
+            base_distribution = distribution,
             tails=tail_type,
             tail_bound=tail_bound,
             **kwargs,

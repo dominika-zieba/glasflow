@@ -248,6 +248,17 @@ def interp(x, xp, fp):
 
     return values
 
+def sigmoid(x):
+    y = 1/(1+torch.exp(-x))
+    log_dy_dx = torch.log(y) + torch.log1p(-y)
+
+    return y, log_dy_dx
+
+def logit(x):
+    y = torch.log(x) - torch.log1p(-x)
+    log_dy_dx =  -(torch.log(x - x**2))
+    return y, log_dy_dx
+
 
 def bernstein_transform(
     inputs,
@@ -255,18 +266,16 @@ def bernstein_transform(
     inverse=False,
     left=0.0,
     right=1.0,
-    top=0.0,
-    bottom=1.0,
+    top=1.0,
+    bottom=0.0,
+    base_distribution = None,
     log=False,
 ):
-
+    
     domain_min = left
     domain_max = right
     range_min = bottom
     range_max = top
-
-    # print(inputs.shape)
-    # print(unconstrained_alphas.shape)
 
     initial_shape = inputs.shape
     inputs = inputs.flatten()
@@ -275,41 +284,58 @@ def bernstein_transform(
     unconstrained_alphas = unconstrained_alphas.reshape(
         (inputs.shape[0], unconstrained_alphas.shape[-1])
     )
-
-    # initial_shape = inputs.shape
-    # inputs = inputs.flatten()
-
-    # check if input is in the domain
-    if torch.min(inputs) < domain_min or torch.max(inputs) > domain_max:
-        raise InputOutsideDomain()
-
+    
     # constrain alphas to an increasing sequence
     alphas = get_increasing_alphas_nd(
-        unconstrained_alphas, range_min=0, range_max=1
+        unconstrained_alphas, range_min=range_min, range_max=range_max
     )
 
-    if log:
-        if inverse:
-            outputs, logabsdet = bernstein_transform_inv_log(inputs, alphas)
-            return outputs.reshape(initial_shape), logabsdet.reshape(
-                initial_shape
-            )
+    #print(torch.min(inputs))
+    #print(torch.max(inputs))
+
+    if base_distribution == None: #None = gaussian latent
+        #sigmoid the data fit within the [0,1] domain of the Bernstein transforms 
+        inputs,log_j_1 = sigmoid(inputs)
+    
+        # check if input is in the domain
+        if torch.min(inputs) < domain_min or torch.max(inputs) > domain_max:
+            raise InputOutsideDomain()
+
+        if log:
+            if inverse:
+                outputs, logabsdet = bernstein_transform_inv_log(inputs, alphas)
+            else:
+                outputs, logabsdet = bernstein_transform_fwd_log(inputs, alphas)
 
         else:
-            outputs, logabsdet = bernstein_transform_fwd_log(inputs, alphas)
-            return outputs.reshape(initial_shape), logabsdet.reshape(
-                initial_shape
-            )
+            if inverse:
+                outputs, logabsdet = bernstein_transform_inv(inputs, alphas)
+            else:
+                outputs, logabsdet = bernstein_transform_fwd(inputs, alphas)
+
+        #logit the data (bring back to infinite range)
+        outputs, log_j_2 = logit(outputs)
+        logabsdet = logabsdet+log_j_1+log_j_2
+        #print(log_j_2)
 
     else:
-        if inverse:
-            outputs, logabsdet = bernstein_transform_inv(inputs, alphas)
-            return outputs.reshape(initial_shape), logabsdet.reshape(
-                initial_shape
-            )
+        # check if input is in the domain
+        if torch.min(inputs) < domain_min or torch.max(inputs) > domain_max:
+            raise InputOutsideDomain()
+
+        if log:
+            if inverse:
+                outputs, logabsdet = bernstein_transform_inv_log(inputs, alphas)
+            else:
+                outputs, logabsdet = bernstein_transform_fwd_log(inputs, alphas)
 
         else:
-            outputs, logabsdet = bernstein_transform_fwd(inputs, alphas)
-            return outputs.reshape(initial_shape), logabsdet.reshape(
-                initial_shape
-            )
+            if inverse:
+                outputs, logabsdet = bernstein_transform_inv(inputs, alphas)
+            else:
+                outputs, logabsdet = bernstein_transform_fwd(inputs, alphas)
+
+    return outputs.reshape(initial_shape), logabsdet.reshape(
+                    initial_shape
+                )
+
