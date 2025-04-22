@@ -4,7 +4,7 @@ from torch.nn import functional as F
 from glasflow.nflows.transforms.base import InputOutsideDomain
 
 
-clip = 1e-7
+clip = 0.
 
 
 def bernstein_basis_polynomial(k, n):
@@ -16,9 +16,21 @@ def bernstein_basis_polynomial(k, n):
     )
 
     def basis_polynomial(x):
-        return binomial_coeff * torch.exp(
-            k * torch.log(x) + (n - k) * torch.log(1 - x)
-        )
+        if k == 0:
+            return torch.where(x==0, torch.tensor(1.), binomial_coeff * torch.exp(
+                k * torch.log(x) + (n - k) * torch.log(1 - x)))
+        if k == n:
+            return torch.where(x==1, torch.tensor(1.), binomial_coeff * torch.exp(
+                k * torch.log(x) + (n - k) * torch.log(1 - x)))
+        else:
+            return binomial_coeff * torch.exp(
+                k * torch.log(x) + (n - k) * torch.log(1 - x)
+            )
+        
+    #def basis_polynomial(x):
+    #    return binomial_coeff * torch.exp(
+    #            k * torch.log(x) + (n - k) * torch.log(1 - x)
+    #        )
 
     return basis_polynomial
 
@@ -31,11 +43,19 @@ def log_bernstein_basis_polynomial(k, n):
     )
 
     def log_basis_polynomial(x):
-        return (
-            log_binomial_coeff
-            + k * torch.log1p(x - 1)
-            + (n - k) * torch.log1p(-x)
-        )
+        if k == 0:
+            return torch.where(x==0, torch.tensor(0.), log_binomial_coeff + k * torch.log1p(x - 1) + (n - k) * torch.log1p(-x))
+        if k == n:
+            return torch.where(x==1, torch.tensor(0.), log_binomial_coeff + k * torch.log1p(x - 1) + (n - k) * torch.log1p(-x))
+        else:
+            return log_binomial_coeff + k * torch.log1p(x - 1) + (n - k) * torch.log1p(-x)
+        
+    #def log_basis_polynomial(x):
+    #    return (
+    #        log_binomial_coeff
+    #        + k * torch.log1p(x - 1)
+    #        + (n - k) * torch.log1p(-x)
+    #    )
 
     return log_basis_polynomial
 
@@ -102,7 +122,6 @@ def bernstein_fwd(x, alphas):
     """Computes y = f(x)."""
     # takes x as 1D array of the shape (n_samps), alpha of the shape (n_samps, n_params)
 
-    clip = 1e-6
     x = torch.clip(x, clip, 1.0 - clip)
 
     n = alphas.shape[-1] - 1  # degree of the bernstein polynomial

@@ -22,18 +22,13 @@ class PiecewiseBernsteinCouplingTransform(PiecewiseCouplingTransform):
         mask,
         transform_net_create_fn,
         bernstein_degree=10,
-        tails=None,
-        tail_bound=1.0,
-        apply_unconditional_transform=False,
         base_distribution = 'uniform',
         log=False,
+        apply_unconditional_transform=False,
     ):
 
         self.bernstein_degree = bernstein_degree
-        self.tails = tails
-        self.tail_bound = tail_bound
         self.log = log
-        self.base_distribution = base_distribution
 
         if apply_unconditional_transform:
             raise NotImplementedError()
@@ -46,6 +41,8 @@ class PiecewiseBernsteinCouplingTransform(PiecewiseCouplingTransform):
             transform_net_create_fn,
             unconditional_transform=unconditional_transform,
         )
+
+        self.base_distribution = base_distribution
 
     def _transform_dim_multiplier(self):
         return self.bernstein_degree
@@ -61,11 +58,8 @@ class PiecewiseBernsteinCouplingTransform(PiecewiseCouplingTransform):
             warnings.warn(
                 "Inputs to the softmax are not scaled down: initialization might be bad."
             )
-
-        if self.tails is None:
-            bijector_fn = bernstein_transform
-        else:
-            raise NotImplementedError()
+    
+        bijector_fn = bernstein_transform
 
         return bijector_fn(
             inputs=inputs,
@@ -112,12 +106,6 @@ class CouplingBPF(CouplingFlow):
         an alternating binary mask will be used.
     bernstein_degree : int
         Degree of Bernstein polynomial transform in each dimension.
-    tail_type : {None, 'linear'}
-        Not implemented. Type of tails to use outside the bounds on which the bernstein polynomials are
-        defined.
-    tail_bound : float
-        Not implemented. Bound that defines the region over which the polynomials are defined.
-        I.e. [-tail_bound, tail_bound]
     kwargs :
         Keyword arguments passed to the transform when is it initialised.
     """
@@ -138,8 +126,6 @@ class CouplingBPF(CouplingFlow):
         mask=None,
         bernstein_degree=10,
         log=False,
-        tail_type=None,
-        tail_bound=1.0,
         **kwargs,
     ):
 
@@ -147,8 +133,6 @@ class CouplingBPF(CouplingFlow):
 
         if distribution == "uniform":
             from ..distributions import MultivariateUniform
-            tail_bound = 1.0
-            tail_type = None
             distribution_object = MultivariateUniform(
                 low=torch.Tensor(n_inputs * [0.0]),
                 high=torch.Tensor(n_inputs * [1.0]),
@@ -176,8 +160,6 @@ class CouplingBPF(CouplingFlow):
             bernstein_degree=bernstein_degree,
             log=log,
             base_distribution = distribution,
-            tails=tail_type,
-            tail_bound=tail_bound,
             **kwargs,
         )
 
