@@ -22,7 +22,7 @@ class PiecewiseBernsteinCouplingTransform(PiecewiseCouplingTransform):
         mask,
         transform_net_create_fn,
         bernstein_degree=10,
-        base_distribution = 'uniform',
+        base_distribution="uniform",
         log=False,
         apply_unconditional_transform=False,
     ):
@@ -58,14 +58,14 @@ class PiecewiseBernsteinCouplingTransform(PiecewiseCouplingTransform):
             warnings.warn(
                 "Inputs to the softmax are not scaled down: initialization might be bad."
             )
-    
+
         bijector_fn = bernstein_transform
 
         return bijector_fn(
             inputs=inputs,
             unconstrained_alphas=unconstrained_alphas,
             inverse=inverse,
-            base_distribution = self.base_distribution,
+            base_distribution=self.base_distribution,
             log=self.log,
         )
 
@@ -91,7 +91,7 @@ class CouplingBPF(CouplingFlow):
     batch_norm_within_blocks : bool
         Enable batch normalisation within each residual block
     batch_norm_between_transforms : bool
-        Enable batch norm between transforms. False for uniform latent space. 
+        Enable batch norm between transforms. False for uniform latent space.
     activation : function
         Activation function to use. Defaults to ReLU
     dropout_probability : float
@@ -133,6 +133,7 @@ class CouplingBPF(CouplingFlow):
 
         if distribution == "uniform":
             from ..distributions import MultivariateUniform
+
             distribution_object = MultivariateUniform(
                 low=torch.Tensor(n_inputs * [0.0]),
                 high=torch.Tensor(n_inputs * [1.0]),
@@ -140,7 +141,9 @@ class CouplingBPF(CouplingFlow):
             batch_norm_between_transforms = False
 
         else:
-            distribution_object = distribution #this is later interpreted as a gaussian
+            distribution_object = (
+                distribution  # this is later interpreted as a gaussian
+            )
         #    raise NotImplementedError()
 
         super().__init__(
@@ -159,7 +162,7 @@ class CouplingBPF(CouplingFlow):
             mask=mask,
             bernstein_degree=bernstein_degree,
             log=log,
-            base_distribution = distribution,
+            base_distribution=distribution,
             **kwargs,
         )
 

@@ -4,7 +4,7 @@ from torch.nn import functional as F
 from glasflow.nflows.transforms.base import InputOutsideDomain
 
 
-clip = 0.
+clip = 0.0
 
 
 def bernstein_basis_polynomial(k, n):
@@ -17,17 +17,25 @@ def bernstein_basis_polynomial(k, n):
 
     def basis_polynomial(x):
         if k == 0:
-            return torch.where(x==0, torch.tensor(1.), binomial_coeff * torch.exp(
-                k * torch.log(x) + (n - k) * torch.log(1 - x)))
+            return torch.where(
+                x == 0,
+                torch.tensor(1.0),
+                binomial_coeff
+                * torch.exp(k * torch.log(x) + (n - k) * torch.log(1 - x)),
+            )
         if k == n:
-            return torch.where(x==1, torch.tensor(1.), binomial_coeff * torch.exp(
-                k * torch.log(x) + (n - k) * torch.log(1 - x)))
+            return torch.where(
+                x == 1,
+                torch.tensor(1.0),
+                binomial_coeff
+                * torch.exp(k * torch.log(x) + (n - k) * torch.log(1 - x)),
+            )
         else:
             return binomial_coeff * torch.exp(
                 k * torch.log(x) + (n - k) * torch.log(1 - x)
             )
-        
-    #def basis_polynomial(x):
+
+    # def basis_polynomial(x):
     #    return binomial_coeff * torch.exp(
     #            k * torch.log(x) + (n - k) * torch.log(1 - x)
     #        )
@@ -44,13 +52,29 @@ def log_bernstein_basis_polynomial(k, n):
 
     def log_basis_polynomial(x):
         if k == 0:
-            return torch.where(x==0, torch.tensor(0.), log_binomial_coeff + k * torch.log1p(x - 1) + (n - k) * torch.log1p(-x))
+            return torch.where(
+                x == 0,
+                torch.tensor(0.0),
+                log_binomial_coeff
+                + k * torch.log1p(x - 1)
+                + (n - k) * torch.log1p(-x),
+            )
         if k == n:
-            return torch.where(x==1, torch.tensor(0.), log_binomial_coeff + k * torch.log1p(x - 1) + (n - k) * torch.log1p(-x))
+            return torch.where(
+                x == 1,
+                torch.tensor(0.0),
+                log_binomial_coeff
+                + k * torch.log1p(x - 1)
+                + (n - k) * torch.log1p(-x),
+            )
         else:
-            return log_binomial_coeff + k * torch.log1p(x - 1) + (n - k) * torch.log1p(-x)
-        
-    #def log_basis_polynomial(x):
+            return (
+                log_binomial_coeff
+                + k * torch.log1p(x - 1)
+                + (n - k) * torch.log1p(-x)
+            )
+
+    # def log_basis_polynomial(x):
     #    return (
     #        log_binomial_coeff
     #        + k * torch.log1p(x - 1)
@@ -267,15 +291,17 @@ def interp(x, xp, fp):
 
     return values
 
+
 def sigmoid(x):
-    y = 1/(1+torch.exp(-x))
+    y = 1 / (1 + torch.exp(-x))
     log_dy_dx = torch.log(y) + torch.log1p(-y)
 
     return y, log_dy_dx
 
+
 def logit(x):
     y = torch.log(x) - torch.log1p(-x)
-    log_dy_dx =  -(torch.log(x - x**2))
+    log_dy_dx = -(torch.log(x - x**2))
     return y, log_dy_dx
 
 
@@ -287,10 +313,10 @@ def bernstein_transform(
     right=1.0,
     top=1.0,
     bottom=0.0,
-    base_distribution = None,
+    base_distribution=None,
     log=False,
 ):
-    
+
     domain_min = left
     domain_max = right
     range_min = bottom
@@ -303,28 +329,32 @@ def bernstein_transform(
     unconstrained_alphas = unconstrained_alphas.reshape(
         (inputs.shape[0], unconstrained_alphas.shape[-1])
     )
-    
+
     # constrain alphas to an increasing sequence
     alphas = get_increasing_alphas_nd(
         unconstrained_alphas, range_min=range_min, range_max=range_max
     )
 
-    #print(torch.min(inputs))
-    #print(torch.max(inputs))
+    # print(torch.min(inputs))
+    # print(torch.max(inputs))
 
-    if base_distribution == None: #None = gaussian latent
-        #sigmoid the data fit within the [0,1] domain of the Bernstein transforms 
-        inputs,log_j_1 = sigmoid(inputs)
-    
+    if base_distribution == None:  # None = gaussian latent
+        # sigmoid the data fit within the [0,1] domain of the Bernstein transforms
+        inputs, log_j_1 = sigmoid(inputs)
+
         # check if input is in the domain
         if torch.min(inputs) < domain_min or torch.max(inputs) > domain_max:
             raise InputOutsideDomain()
 
         if log:
             if inverse:
-                outputs, logabsdet = bernstein_transform_inv_log(inputs, alphas)
+                outputs, logabsdet = bernstein_transform_inv_log(
+                    inputs, alphas
+                )
             else:
-                outputs, logabsdet = bernstein_transform_fwd_log(inputs, alphas)
+                outputs, logabsdet = bernstein_transform_fwd_log(
+                    inputs, alphas
+                )
 
         else:
             if inverse:
@@ -332,10 +362,10 @@ def bernstein_transform(
             else:
                 outputs, logabsdet = bernstein_transform_fwd(inputs, alphas)
 
-        #logit the data (bring back to infinite range)
+        # logit the data (bring back to infinite range)
         outputs, log_j_2 = logit(outputs)
-        logabsdet = logabsdet+log_j_1+log_j_2
-        #print(log_j_2)
+        logabsdet = logabsdet + log_j_1 + log_j_2
+        # print(log_j_2)
 
     else:
         # check if input is in the domain
@@ -344,9 +374,13 @@ def bernstein_transform(
 
         if log:
             if inverse:
-                outputs, logabsdet = bernstein_transform_inv_log(inputs, alphas)
+                outputs, logabsdet = bernstein_transform_inv_log(
+                    inputs, alphas
+                )
             else:
-                outputs, logabsdet = bernstein_transform_fwd_log(inputs, alphas)
+                outputs, logabsdet = bernstein_transform_fwd_log(
+                    inputs, alphas
+                )
 
         else:
             if inverse:
@@ -354,7 +388,4 @@ def bernstein_transform(
             else:
                 outputs, logabsdet = bernstein_transform_fwd(inputs, alphas)
 
-    return outputs.reshape(initial_shape), logabsdet.reshape(
-                    initial_shape
-                )
-
+    return outputs.reshape(initial_shape), logabsdet.reshape(initial_shape)
